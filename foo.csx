@@ -1,3 +1,6 @@
+
+/* NB. this doesn't work, because winforms requires a single thread. idk how to tell csi. */
+
 #r "PresentationFramework"
 #r "System.Windows.Forms"
 #r "System.Web.Extensions"

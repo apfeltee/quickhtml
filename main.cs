@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
@@ -7,6 +8,7 @@ using System.Linq;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Reflection;
+using Markdig;
 
 class DumbOpts
 {
@@ -72,20 +74,22 @@ class DumbOpts
 class Options
 {
     public bool wrappre = false;
+    public bool ismarkdown = false;
     public DumbOpts dopts;
 
 
-    private bool getOption(string name, string normalopt, params string[] patterns)
+    private bool getOption(string name, params string[] patterns)
     {
         var rt = dopts.Has(patterns);
-        Console.WriteLine("option {0} ({1}) = {2}", name, normalopt, rt);
+        Console.WriteLine("option -{0} ({1}) = {2}", name, patterns[0], rt);
         return rt;
     }
 
     public Options(string[] args)
     {
         dopts = new DumbOpts(args);
-        wrappre = getOption("wrap-inpre", "-pre", "e", "p", "pre");
+        wrappre = getOption("wrap-inpre", "pre", "e", "p");
+        ismarkdown = getOption("is-markdown", "markdown", "md");
         
         var json = new JavaScriptSerializer().Serialize(dopts.parsed);
         Console.WriteLine("parsed={0}", json);
@@ -139,6 +143,11 @@ class QuickHTMLForm: Form
         if(m_opts.wrappre)
         {
             var tmp = string.Format("<pre>\n{0}\n</pre>", text);
+            m_browser.DocumentText = tmp;
+        }
+        else if(m_opts.ismarkdown)
+        {
+            var tmp = Markdown.ToHtml(text);
             m_browser.DocumentText = tmp;
         }
         else

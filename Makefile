@@ -1,4 +1,4 @@
 
 all:
-	csc -out:quickhtml.exe main.cs
+	csc -r:System.Memory.dll -r:Markdig.dll -out:quickhtml.exe main.cs
 
