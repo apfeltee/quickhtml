@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Web.Script.Serialization;
 using System.Collections.Generic;
 using System.Linq;
 using System.Drawing;
@@ -9,30 +10,86 @@ using System.Reflection;
 
 class DumbOpts
 {
-    public string[] m_rawargs;
-    public List<string> pargs;
+    public List<string> rawargs;
+    public List<string> positional;
+    public Dictionary<string, string> parsed;
 
     public DumbOpts(string[] args)
     {
-        int i;
-        m_rawargs = args;
-        pargs = new List<string>();
-    
+        rawargs = new List<string>(args);
+        parsed = new Dictionary<string, string>();
+        positional = new List<string>();
+        parse();
     }
 
-    
+    private void CheckAndInject(string arg)
+    {
+        int i;
+        string actual;
+        for(i=0; i<arg.Length; i++)
+        {
+            if(arg[i] != '-')
+            {
+                break;
+            }
+        }
+        actual = arg.Substring(i);
+        parsed.Add(actual, "");
+    }
+
+    public DumbOpts parse()
+    {
+        int i;
+        string arg;
+        for(i=0; i!=rawargs.Count; i++)
+        {
+            arg = rawargs[i];
+            if(arg[0] == '-')
+            {
+                CheckAndInject(arg);
+            }
+            else
+            {
+                positional.Add(arg);
+            }
+        }
+        return this;
+    }
+
+    public bool Has(params string[] ops)
+    {
+        foreach(var op in ops)
+        {
+            if(parsed.ContainsKey(op))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 class Options
 {
     public bool wrappre = false;
     public DumbOpts dopts;
-    
+
+
+    private bool getOption(string name, string normalopt, params string[] patterns)
+    {
+        var rt = dopts.Has(patterns);
+        Console.WriteLine("option {0} ({1}) = {2}", name, normalopt, rt);
+        return rt;
+    }
 
     public Options(string[] args)
     {
         dopts = new DumbOpts(args);
-        //wrappre = dopts.Has("-e");
+        wrappre = getOption("wrap-inpre", "-pre", "e", "p", "pre");
+        
+        var json = new JavaScriptSerializer().Serialize(dopts.parsed);
+        Console.WriteLine("parsed={0}", json);
+
     }
 };
 
@@ -79,7 +136,15 @@ class QuickHTMLForm: Form
     {
         var reader = new StreamReader(path);
         var text = reader.ReadToEnd();
-        m_browser.DocumentText = text;
+        if(m_opts.wrappre)
+        {
+            var tmp = string.Format("<pre>\n{0}\n</pre>", text);
+            m_browser.DocumentText = tmp;
+        }
+        else
+        {
+            m_browser.DocumentText = text;
+        }
     }
 
     protected override void Dispose(bool disposing)
@@ -116,20 +181,18 @@ class QuickHTMLForm: Form
 
 static class Program
 {
-
-
     [STAThread]
-    static void Main(string[] args)
+    public static void Main(string[] args)
     {
         string arg;
         var opts = new Options(args);
-        if(opts.dopts.pargs.Count == 0)
+        if(opts.dopts.positional.Count == 0)
         {
             Console.WriteLine("usage: quickhtml <url>\n");
         }
         else
         {
-            arg = opts.dopts.pargs[0];
+            arg = opts.dopts.positional[0];
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new QuickHTMLForm(opts, arg));
